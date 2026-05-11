@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 from openai import OpenAI
 import json
@@ -169,4 +168,3 @@ if st.session_state.palette:
     st.subheader("📦 JSON Tokens")
 
     st.json(palette)
-```
