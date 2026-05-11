@@ -15,7 +15,7 @@ st.set_page_config(
 # TITLE
 # -----------------------------------
 st.title("🎨 AI Design System Generator")
-st.caption("Generate colors, design tokens, and UI components with AI")
+st.caption("Generate colors, tokens, and preview UI components")
 
 # -----------------------------------
 # API KEY
@@ -47,13 +47,12 @@ style = st.sidebar.selectbox(
         "Modern",
         "Brutalist",
         "Luxury",
-        "Glassmorphism",
-        "Neumorphism"
+        "Glassmorphism"
     ]
 )
 
 theme_mode = st.sidebar.selectbox(
-    "Theme Mode",
+    "Theme",
     [
         "Light",
         "Dark"
@@ -61,18 +60,18 @@ theme_mode = st.sidebar.selectbox(
 )
 
 radius = st.sidebar.slider(
-    "Border Radius",
+    "Radius",
     0,
     32,
     16
 )
 
 # -----------------------------------
-# USER INPUT
+# INPUT
 # -----------------------------------
 prompt = st.text_area(
     "Describe your product",
-    placeholder="AI productivity tool for Gen Z designers",
+    placeholder="Modern fintech app for Gen Z",
     height=120
 )
 
@@ -84,17 +83,14 @@ generate = st.button("Generate Design System")
 if generate and prompt:
 
     system_prompt = f"""
-    You are a senior product designer and design system engineer.
+    You are a senior UI/UX designer.
 
     Generate:
-    1. Color palette
+    1. Modern UI color palette
     2. Design tokens
-    3. Tailwind theme
-    4. React Button component
 
     Style: {style}
     Theme: {theme_mode}
-    Radius: {radius}px
 
     Return ONLY valid JSON.
 
@@ -115,10 +111,9 @@ if generate and prompt:
         "background": "",
         "surface": "",
         "text": "",
+        "border": "",
         "accent": ""
-      }},
-      "tailwind": "",
-      "component": ""
+      }}
     }}
     """
 
@@ -143,6 +138,8 @@ if generate and prompt:
 
         try:
             data = json.loads(result)
+
+            tokens = data["tokens"]
 
             # -----------------------------------
             # BRAND INFO
@@ -188,40 +185,125 @@ if generate and prompt:
 
             st.subheader("📦 Design Tokens")
 
-            st.json(data["tokens"])
+            st.json(tokens)
 
             # -----------------------------------
-            # TAILWIND CONFIG
-            # -----------------------------------
-            st.divider()
-
-            st.subheader("⚡ Tailwind Theme")
-
-            st.code(
-                data["tailwind"],
-                language="javascript"
-            )
-
-            # -----------------------------------
-            # COMPONENT
+            # COMPONENT PREVIEW
             # -----------------------------------
             st.divider()
 
-            st.subheader("🧩 React Component")
+            st.subheader("🧩 Component Preview")
 
-            st.code(
-                data["component"],
-                language="tsx"
+            preview_html = f"""
+            <div style="
+                background:{tokens['background']};
+                padding:40px;
+                border-radius:24px;
+                border:1px solid {tokens['border']};
+                font-family:Inter, sans-serif;
+            ">
+
+                <h3 style="
+                    color:{tokens['text']};
+                    margin-bottom:24px;
+                ">
+                    Button
+                </h3>
+
+                <div style="
+                    display:flex;
+                    gap:16px;
+                    margin-bottom:40px;
+                    flex-wrap:wrap;
+                ">
+
+                    <button style="
+                        background:{tokens['primary']};
+                        color:white;
+                        border:none;
+                        padding:14px 24px;
+                        border-radius:{radius}px;
+                        font-size:16px;
+                        font-weight:600;
+                        cursor:pointer;
+                    ">
+                        Primary Button
+                    </button>
+
+                    <button style="
+                        background:{tokens['surface']};
+                        color:{tokens['text']};
+                        border:1px solid {tokens['border']};
+                        padding:14px 24px;
+                        border-radius:{radius}px;
+                        font-size:16px;
+                        font-weight:600;
+                        cursor:pointer;
+                    ">
+                        Secondary Button
+                    </button>
+
+                </div>
+
+                <h3 style="
+                    color:{tokens['text']};
+                    margin-bottom:24px;
+                ">
+                    TextField
+                </h3>
+
+                <div style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:20px;
+                    max-width:420px;
+                ">
+
+                    <input
+                        placeholder="Email Address"
+                        style="
+                            background:{tokens['surface']};
+                            color:{tokens['text']};
+                            border:1px solid {tokens['border']};
+                            padding:16px;
+                            border-radius:{radius}px;
+                            font-size:16px;
+                            outline:none;
+                        "
+                    />
+
+                    <input
+                        placeholder="Password"
+                        type="password"
+                        style="
+                            background:{tokens['surface']};
+                            color:{tokens['text']};
+                            border:1px solid {tokens['border']};
+                            padding:16px;
+                            border-radius:{radius}px;
+                            font-size:16px;
+                            outline:none;
+                        "
+                    />
+
+                </div>
+
+            </div>
+            """
+
+            st.components.v1.html(
+                preview_html,
+                height=500
             )
 
             # -----------------------------------
-            # DOWNLOAD TOKENS
+            # DOWNLOAD
             # -----------------------------------
             st.divider()
 
             st.download_button(
-                "Download Design Tokens",
-                data=json.dumps(data["tokens"], indent=2),
+                "Download Tokens JSON",
+                data=json.dumps(tokens, indent=2),
                 file_name="design-tokens.json",
                 mime="application/json"
             )
