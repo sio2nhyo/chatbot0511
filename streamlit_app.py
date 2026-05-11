@@ -1,56 +1,172 @@
+```python
 import streamlit as st
 from openai import OpenAI
+import json
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+# -----------------------------
+# Page Config
+# -----------------------------
+st.set_page_config(
+    page_title="AI Color Generator",
+    page_icon="🎨",
+    layout="wide"
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
+# -----------------------------
+# Header
+# -----------------------------
+st.title("🎨 AI Color System Generator")
+st.caption("Generate modern design system color palettes using AI")
+
+st.write(
+    """
+    Describe the brand, mood, or product you want to design for.
+    
+    Examples:
+    - "Fintech app for Gen Z"
+    - "Luxury fashion brand"
+    - "Minimal productivity tool"
+    - "AI startup with futuristic feeling"
+    """
+)
+
+# -----------------------------
+# API KEY
+# -----------------------------
+openai_api_key = st.text_input(
+    "OpenAI API Key",
+    type="password",
+    placeholder="sk-..."
+)
+
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+    st.stop()
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+# -----------------------------
+# OpenAI Client
+# -----------------------------
+client = OpenAI(api_key=openai_api_key)
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# -----------------------------
+# Session State
+# -----------------------------
+if "palette" not in st.session_state:
+    st.session_state.palette = None
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+# -----------------------------
+# User Input
+# -----------------------------
+prompt = st.text_area(
+    "Describe your brand or UI",
+    placeholder="Example: Modern fintech app with trust, premium, and clean feeling",
+    height=120
+)
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
+generate = st.button("Generate Color System")
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+# -----------------------------
+# Generate Colors
+# -----------------------------
+if generate and prompt:
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+    system_prompt = """
+    You are a senior UI/UX designer and design system expert.
+
+    Your task is to generate a modern UI color system.
+
+    Return ONLY valid JSON.
+
+    Format:
+    {
+      "brand_name": "",
+      "concept": "",
+      "colors": [
+        {
+          "name": "",
+          "hex": "",
+          "usage": ""
+        }
+      ]
+    }
+
+    Requirements:
+    - Generate 6 colors
+    - Include:
+      - Primary
+      - Secondary
+      - Background
+      - Surface
+      - Text
+      - Accent
+    - Colors should feel cohesive
+    - Use modern startup-style palettes
+    """
+
+    with st.spinner("Generating design system colors..."):
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
             messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
             ],
-            stream=True,
+            temperature=0.9
         )
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        result = response.choices[0].message.content
+
+        try:
+            palette = json.loads(result)
+            st.session_state.palette = palette
+
+        except:
+            st.error("Failed to parse AI response.")
+            st.code(result)
+
+# -----------------------------
+# Display Palette
+# -----------------------------
+if st.session_state.palette:
+
+    palette = st.session_state.palette
+
+    st.divider()
+
+    st.subheader(f"✨ {palette['brand_name']}")
+    st.write(palette["concept"])
+
+    cols = st.columns(len(palette["colors"]))
+
+    for idx, color in enumerate(palette["colors"]):
+
+        with cols[idx]:
+
+            st.markdown(
+                f"""
+                <div style="
+                    background:{color['hex']};
+                    height:140px;
+                    border-radius:20px;
+                    border:1px solid #e5e7eb;
+                "></div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            st.markdown(f"### {color['name']}")
+            st.code(color["hex"])
+            st.caption(color["usage"])
+
+    st.divider()
+
+    st.subheader("📦 JSON Tokens")
+
+    st.json(palette)
+```
